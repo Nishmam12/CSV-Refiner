@@ -1,6 +1,7 @@
 import type { Profile } from "@/types/profile";
 
 const STORAGE_KEY = "osltt:profiles";
+const FILE_STORE_KEY = "profiles";
 const DEFAULT_PROFILES: Profile[] = [
   { id: "default", name: "OSLTT Mouse Default", thresholdPct: 10, minDeviationMs: 2, sensitivity: "balanced", handling: "flag", isDefault: true, createdAt: 0 },
   { id: "strict", name: "OSLTT Mouse Strict", thresholdPct: 5, minDeviationMs: 1.5, sensitivity: "aggressive", handling: "remove", isDefault: false, createdAt: 0 },
@@ -8,8 +9,28 @@ const DEFAULT_PROFILES: Profile[] = [
   { id: "8k", name: "OSLTT 8K", thresholdPct: 15, minDeviationMs: 1, sensitivity: "balanced", handling: "flag", isDefault: false, createdAt: 0 },
 ];
 
+type DesktopBridge = {
+  isDesktop?: boolean;
+  storeLoad?: (name: string) => Promise<string | null>;
+  storeSave?: (name: string, data: string) => Promise<boolean>;
+};
+
+function getDesktop(): DesktopBridge | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { oslttDesktop?: DesktopBridge };
+  return w.oslttDesktop ?? null;
+}
+
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
+}
+
+function mirrorToFile(profiles: Profile[]): void {
+  const d = getDesktop();
+  if (!d?.storeSave) return;
+  try {
+    void d.storeSave(FILE_STORE_KEY, JSON.stringify(profiles)).catch(() => {});
+  } catch {}
 }
 
 export function loadProfiles(): Profile[] {
@@ -29,6 +50,37 @@ export function loadProfiles(): Profile[] {
 export function saveProfiles(profiles: Profile[]): void {
   if (!isBrowser()) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+  mirrorToFile(profiles);
+}
+
+export async function loadProfilesAsync(): Promise<Profile[]> {
+  const sync = loadProfiles();
+  const d = getDesktop();
+  if (!d?.storeLoad) return sync;
+  try {
+    const raw = await d.storeLoad(FILE_STORE_KEY);
+    if (!raw) {
+      if (sync !== DEFAULT_PROFILES && sync.length > 0) mirrorToFile(sync);
+      return sync;
+    }
+    const parsed = JSON.parse(raw) as Profile[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return sync;
+    const valid = parsed.filter((p) => p.id && p.name && typeof p.thresholdPct === "number");
+    if (valid.length === 0) return sync;
+    // if sync is defaults and file has custom data, prefer file
+    const isSyncDefault = sync.length === DEFAULT_PROFILES.length && sync.every((p) => DEFAULT_PROFILES.some((d) => d.id === p.id));
+    if (isSyncDefault && valid.length > DEFAULT_PROFILES.length) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+      } catch {}
+      return valid;
+    }
+    // otherwise sync is already equal or newer — keep sync but ensure file mirrors it if sync has more entries
+    if (sync.length > valid.length) mirrorToFile(sync);
+    return sync;
+  } catch {
+    return sync;
+  }
 }
 
 export function getDefaultProfile(profiles: Profile[]): Profile {

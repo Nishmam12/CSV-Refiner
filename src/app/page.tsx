@@ -9,6 +9,7 @@ import { parseFilename } from "@/lib/filename/parseFilename";
 import { detectOutliers } from "@/lib/outliers/detector";
 import {
   loadProfiles,
+  loadProfilesAsync,
   saveProfiles,
   getDefaultProfile,
   duplicateProfile,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/profiles/profileStore";
 import {
   loadHistory,
+  loadHistoryAsync,
   appendHistory,
   clearHistory as clearHistoryStore,
   deleteHistoryEntry as deleteHistoryEntryStore,
@@ -74,6 +76,21 @@ export default function Home() {
     setProfiles(p);
     setActiveProfileId(getDefaultProfile(p).id);
     setHistoryEntries(loadHistory());
+    // In Electron, hydrate from file-backed store (fixes random-port localStorage loss)
+    loadProfilesAsync()
+      .then((p2) => {
+        // Only update if file gave us different data (e.g. survived a port change)
+        if (JSON.stringify(p2) !== JSON.stringify(p)) {
+          setProfiles(p2);
+          setActiveProfileId((cur) => (p2.some((x) => x.id === cur) ? cur : getDefaultProfile(p2).id));
+        }
+      })
+      .catch(() => {});
+    loadHistoryAsync()
+      .then((h) => {
+        if (h.length > 0) setHistoryEntries(h);
+      })
+      .catch(() => {});
   }, []);
 
   const activeProfile = useMemo(() => profiles.find((p) => p.id === activeProfileId) ?? profiles[0], [profiles, activeProfileId]);
@@ -326,8 +343,11 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-cyan-500 text-sm font-bold text-zinc-950">OS</div>
             <div>
-              <h1 className="text-sm font-semibold tracking-widest text-zinc-100">OSLTT DATA STUDIO</h1>
-              <p className="text-[11px] text-zinc-500">Local-first latency refinement — deterministic, in-browser</p>
+              <div className="flex items-baseline gap-2">
+                <h1 className="text-sm font-semibold tracking-widest text-zinc-100">OSLTT DATA STUDIO</h1>
+                <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium tracking-widest text-cyan-400 hover:bg-zinc-700 hover:text-cyan-300 transition-colors">by notsonabil</a>
+              </div>
+              <p className="text-[11px] text-zinc-500">Local-first latency refinement — deterministic, in-browser · crafted by <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400/70 hover:text-cyan-400 hover:underline">notsonabil</a></p>
             </div>
           </div>
           <div className="max-w-[420px] text-right text-[11px] text-zinc-500">Your files are processed locally in your browser. They are not uploaded to a server.</div>
@@ -928,6 +948,18 @@ export default function Home() {
           })}
         </div>
       </main>
+
+      <footer className="border-t border-zinc-800 bg-zinc-950 py-4">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-2 px-6 text-xs text-zinc-500">
+          <span>© {new Date().getFullYear()} Crafted with precision by</span>
+          <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="font-semibold tracking-widest text-cyan-400 hover:text-cyan-300 hover:underline">notsonabil</a>
+          <span className="text-zinc-600">·</span>
+          <span className="text-[11px] text-zinc-600">OSLTT Data Studio</span>
+        </div>
+      </footer>
+
+      {/* Floating watermark — clickable to notsonabil.com, opens externally via Electron shell */}
+      <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="fixed bottom-3 right-3 z-50 select-none rounded bg-zinc-900/80 px-2 py-1 text-[10px] font-medium tracking-widest text-zinc-500 backdrop-blur border border-zinc-800/50 hover:bg-zinc-800 hover:text-cyan-400 hover:border-zinc-700 transition-colors">notsonabil</a>
     </div>
   );
 }

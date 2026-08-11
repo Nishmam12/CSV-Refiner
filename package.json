@@ -2,8 +2,8 @@
   "name": "osltt-data-studio",
   "version": "0.1.0",
   "private": true,
-  "description": "OSLTT Data Studio - local-first latency refinement",
-  "author": "OSLTT Data Studio",
+  "description": "OSLTT Data Studio - local-first latency refinement by notsonabil",
+  "author": "notsonabil",
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",

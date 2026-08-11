@@ -1,10 +1,67 @@
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const url = require("url");
 
-if (!app.requestSingleInstanceLock()) app.quit();
+// Fixed port for local server so localStorage origin is stable across launches.
+// Random port (listen 0) causes localStorage to be per-origin and history is lost.
+const FIXED_PORT = 37491;
+const FIXED_PORT_RANGE = 10; // try FIXED_PORT .. FIXED_PORT+9 before falling back to random
+
+function getStoreFilePath(name) {
+  try {
+    return path.join(app.getPath("userData"), `${name}.json`);
+  } catch (_) {
+    return null;
+  }
+}
+
+function readStoreFile(name) {
+  const p = getStoreFilePath(name);
+  if (!p) return null;
+  try {
+    if (!fs.existsSync(p)) return null;
+    return fs.readFileSync(p, "utf-8");
+  } catch (e) {
+    log(`readStoreFile ${name} failed`, e.message);
+    return null;
+  }
+}
+
+function writeStoreFile(name, data) {
+  const p = getStoreFilePath(name);
+  if (!p) return;
+  try {
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, typeof data === "string" ? data : JSON.stringify(data), "utf-8");
+  } catch (e) {
+    log(`writeStoreFile ${name} failed`, e.message);
+  }
+}
+
+// File-backed persistence so history/profiles survive even if port changes or localStorage is cleared
+if (ipcMain && typeof ipcMain.handle === "function") {
+  ipcMain.handle("osltt:store:load", (_e, name) => readStoreFile(name));
+  ipcMain.handle("osltt:store:save", (_e, name, data) => {
+    writeStoreFile(name, data);
+    return true;
+  });
+  ipcMain.handle("osltt:store:clear", (_e, name) => {
+    const p = getStoreFilePath(name);
+    if (!p) return false;
+    try {
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    } catch (_) {}
+    return true;
+  });
+}
+
+if (!app || !app.requestSingleInstanceLock || !app.requestSingleInstanceLock()) {
+  try {
+    if (app && app.quit) app.quit();
+  } catch {}
+}
 
 let mainWindow = null;
 let server = null;
@@ -115,6 +172,42 @@ async function startServer() {
     log("No index.html in outDir, cannot start static server");
     return null;
   }
+
+  // Try fixed port range first so localStorage origin stays stable (history recall)
+  for (let port = FIXED_PORT; port < FIXED_PORT + FIXED_PORT_RANGE; port++) {
+    try {
+      const url = await new Promise((resolve, reject) => {
+        const srv = createStaticServer(outDir);
+        const onError = (e) => {
+          srv.removeListener("listening", onListening);
+          reject(e);
+        };
+        const onListening = () => {
+          srv.removeListener("error", onError);
+          const addr = srv.address();
+          server = srv;
+          serverPort = addr.port;
+          log("Static server listening on", `http://127.0.0.1:${addr.port}`, "serving", outDir);
+          resolve(`http://127.0.0.1:${addr.port}`);
+        };
+        srv.once("error", onError);
+        srv.once("listening", onListening);
+        srv.listen(port, "127.0.0.1");
+      });
+      return url;
+    } catch (e) {
+      if (e && e.code === "EADDRINUSE") {
+        log(`Port ${port} in use, trying next`);
+        continue;
+      }
+      log("Server listen error on fixed port", e.message);
+      // fall through to random port as last resort
+      break;
+    }
+  }
+
+  // Fallback: random port (history will still be file-backed via IPC, but localStorage would be isolated)
+  log("Falling back to random port");
   return new Promise((resolve, reject) => {
     const srv = createStaticServer(outDir);
     srv.listen(0, "127.0.0.1", () => {
@@ -139,7 +232,7 @@ async function createWindow() {
     minWidth: 1280,
     minHeight: 720,
     backgroundColor: "#09090b",
-    title: "OSLTT Data Studio",
+    title: "OSLTT Data Studio — by notsonabil",
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -207,20 +300,22 @@ async function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+if (app && app.whenReady) {
+  app.whenReady().then(createWindow);
 
-app.on("second-instance", () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-});
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
 
-app.on("window-all-closed", () => {
-  if (server) server.close();
-  if (process.platform !== "darwin") app.quit();
-});
+  app.on("window-all-closed", () => {
+    if (server) server.close();
+    if (process.platform !== "darwin") app.quit();
+  });
 
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
+  app.on("activate", () => {
+    if (BrowserWindow && BrowserWindow.getAllWindows && BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+}
