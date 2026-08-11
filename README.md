@@ -1,40 +1,48 @@
 # OSLTT Data Studio
 
-Local-first latency refinement for OSLTT CSV exports — deterministic, in-browser. Drag & drop multiple OSLTT files, auto-detect outliers by population, export refined CSVs individually, as a combined single CSV, or as a batch ZIP. History of last batches is stored locally.
+A local-first tool for processing and refining OSLTT benchmark data.
 
 ## Features
-- **Deterministic parsing** — strict header validation, PapaParse, summary rows separated from samples
-- **Outlier detection** — clustering by latency, dominant population, configurable threshold / deviation / sensitivity
-- **Profiles** — localStorage-persisted (8K, Mouse Default, etc.)
-- **Exports** — per-file refined CSV, **Export Combined CSV** (single file `1..N` renumbered, recomputed AVERAGE/MIN/MAX), batch ZIP + `summary.csv`
-- **History** — last 20 batches in `localStorage` (`osltt:history`), with snapshot restore (`Load` per entry, `Restore last batch`)
-- **Electron desktop** — static export + Electron wrapper, offline, no upload
+
+- **OSLTT CSV processing** — drag & drop multiple OSLTT CSV exports with strict header validation and deterministic parsing
+- **Configurable outlier detection** — clustering by latency population with adjustable threshold, deviation, and sensitivity settings
+- **Latency population analysis** — automatic dominant population identification and statistical breakdown
+- **Manual sample review** — inspect, include, or exclude individual samples before export
+- **Statistical recalculation** — recomputes AVERAGE, MIN, and MAX across the refined sample set
+- **Refined OSLTT export** — export per-file refined CSVs, a combined single CSV (renumbered `1..N`), or a batch ZIP with `summary.csv`
+- **Batch processing** — process multiple OSLTT files simultaneously with history of last 20 batches stored locally
+- **Local browser processing** — runs entirely in-browser or as a desktop Electron app; no server required
+- **No benchmark data uploaded** — all files are processed on your machine; nothing leaves your device
 
 ## Quick Start
+
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # vitest 66 tests
+npm test           # vitest unit tests
 npm run build      # next build (web)
 npm run build:export  # static export to out/
 ```
 
 ## Desktop Build
+
 ```bash
 npm run dist           # both Portable + NSIS installer
 npm run dist:portable  # release/OSLTT-Data-Studio-Portable-0.1.0.exe
 npm run dist:nsis      # release/OSLTT Data Studio Setup 0.1.0.exe
-# unpacked for debugging
-# release/win-unpacked/OSLTT Data Studio.exe
 ```
 
-Outputs:
-- `out/` — static export (served by Electron via http://127.0.0.1)
-- `release/win-unpacked/` — unpacked Electron app
-- `release/OSLTT-Data-Studio-Portable-0.1.0.exe` — portable
-- `release/OSLTT Data Studio Setup 0.1.0.exe` — NSIS installer
+**Outputs:**
+
+| Path | Description |
+|---|---|
+| `out/` | Static export served by Electron |
+| `release/win-unpacked/` | Unpacked Electron app (debug) |
+| `release/OSLTT-Data-Studio-Portable-0.1.0.exe` | Portable executable |
+| `release/OSLTT Data Studio Setup 0.1.0.exe` | NSIS installer |
 
 ## Project Structure
+
 ```
 src/
   app/           # Next.js App Router (page.tsx, layout.tsx)
@@ -55,21 +63,20 @@ release/         # generated, gitignored
 ```
 
 ## Scripts
-| script | description |
+
+| Script | Description |
 |---|---|
-| `dev` | next dev |
-| `build` | next build |
-| `build:export` | `ELECTRON=true next build` (output export) |
+| `dev` | `next dev` — local dev server |
+| `build` | `next build` |
+| `build:export` | `ELECTRON=true next build` (static output) |
 | `typecheck` | `tsc --noEmit` |
 | `test` | `vitest run` |
 | `electron` | `electron .` (requires `out/`) |
-| `electron:dev` | build+electron |
-| `dist` | full installer + portable |
-
-## Git Repo Ready
-- `.gitignore` ignores `node_modules/`, `.next/`, `out/`, `release/`, caches, env, OS files
-- No build artifacts committed — run `npm run dist` locally to regenerate
-- Conventional `package.json` with `appId` `com.osltt.datastudio`
+| `electron:dev` | build + launch Electron |
+| `dist` | Full installer + portable |
+| `dist:portable` | Portable `.exe` only |
+| `dist:nsis` | NSIS installer only |
 
 ## Privacy
-All files processed locally in browser/Electron. No upload.
+
+All files are processed locally in the browser or Electron app. No benchmark data is ever uploaded or transmitted.
