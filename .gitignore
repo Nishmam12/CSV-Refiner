@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+release/
+build/
+
+# Cache / incremental
+tsconfig.tsbuildinfo
+.next/cache/
+.cache/
+
+# Electron
+*.log
+osltt.log
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+.nyc_output/

@@ -1,0 +1,79 @@
+{
+  "name": "osltt-data-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OSLTT Data Studio - local-first latency refinement",
+  "author": "OSLTT Data Studio",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:export": "cross-env ELECTRON=true next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "electron": "electron .",
+    "electron:dev": "cross-env ELECTRON=true next build && electron .",
+    "dist": "npm run build:export && electron-builder",
+    "dist:portable": "npm run build:export && electron-builder --win portable",
+    "dist:nsis": "npm run build:export && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "next": "^15.3.5",
+    "papaparse": "^5.4.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/papaparse": "^5.3.15",
+    "@types/react": "^19.0.6",
+    "@types/react-dom": "^19.0.4",
+    "cross-env": "^7.0.3",
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.18.0",
+    "eslint-config-next": "^15.3.5",
+    "happy-dom": "^15.11.7",
+    "tailwindcss": "^4.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "build": {
+    "appId": "com.osltt.datastudio",
+    "productName": "OSLTT Data Studio",
+    "asar": true,
+    "files": [
+      "electron/**/*",
+      "out/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "OSLTT-Data-Studio-Portable-${version}.exe"
+    }
+  }
+}
