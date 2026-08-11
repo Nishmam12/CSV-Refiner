@@ -27,6 +27,8 @@ import type { BatchHistoryEntry } from "@/lib/history/historyStore";
 import type { Profile } from "@/types/profile";
 import type { ManualOverride, ProfileConfig } from "@/types/analysis";
 import type { ParsedFile } from "@/types/osltt";
+import { ProtectedWatermark, WatermarkLink } from "@/lib/watermark/ProtectedWatermark";
+import { getSecureWatermark } from "@/lib/watermark/secure";
 
 type FileState = {
   id: string;
@@ -345,9 +347,14 @@ export default function Home() {
             <div>
               <div className="flex items-baseline gap-2">
                 <h1 className="text-sm font-semibold tracking-widest text-zinc-100">OSLTT DATA STUDIO</h1>
-                <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium tracking-widest text-cyan-400 hover:bg-zinc-700 hover:text-cyan-300 transition-colors">by notsonabil</a>
+                <WatermarkLink className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium tracking-widest text-cyan-400 hover:bg-zinc-700 hover:text-cyan-300 transition-colors">
+                  by {getSecureWatermark().text}
+                </WatermarkLink>
               </div>
-              <p className="text-[11px] text-zinc-500">Local-first latency refinement — deterministic, in-browser · crafted by <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400/70 hover:text-cyan-400 hover:underline">notsonabil</a></p>
+              <p className="text-[11px] text-zinc-500">
+                Local-first latency refinement — deterministic, in-browser · crafted by{" "}
+                <WatermarkLink className="text-cyan-400/70 hover:text-cyan-400 hover:underline">{getSecureWatermark().text}</WatermarkLink>
+              </p>
             </div>
           </div>
           <div className="max-w-[420px] text-right text-[11px] text-zinc-500">Your files are processed locally in your browser. They are not uploaded to a server.</div>
@@ -952,14 +959,15 @@ export default function Home() {
       <footer className="border-t border-zinc-800 bg-zinc-950 py-4">
         <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-2 px-6 text-xs text-zinc-500">
           <span>© {new Date().getFullYear()} Crafted with precision by</span>
-          <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="font-semibold tracking-widest text-cyan-400 hover:text-cyan-300 hover:underline">notsonabil</a>
+          <WatermarkLink className="font-semibold tracking-widest text-cyan-400 hover:text-cyan-300 hover:underline">
+            {getSecureWatermark().text}
+          </WatermarkLink>
           <span className="text-zinc-600">·</span>
           <span className="text-[11px] text-zinc-600">OSLTT Data Studio</span>
         </div>
       </footer>
 
-      {/* Floating watermark — clickable to notsonabil.com, opens externally via Electron shell */}
-      <a href="https://notsonabil.com" target="_blank" rel="noopener noreferrer" className="fixed bottom-3 right-3 z-50 select-none rounded bg-zinc-900/80 px-2 py-1 text-[10px] font-medium tracking-widest text-zinc-500 backdrop-blur border border-zinc-800/50 hover:bg-zinc-800 hover:text-cyan-400 hover:border-zinc-700 transition-colors">notsonabil</a>
+      <ProtectedWatermark />
     </div>
   );
 }
